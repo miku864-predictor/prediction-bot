@@ -1,6 +1,6 @@
 FROM python:3.12-slim
 
-# System dependencies
+# Install dependencies
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
@@ -24,23 +24,29 @@ RUN apt-get update && apt-get install -y \
     libu2f-udev \
     libvulkan1 \
     xdg-utils \
-    --no-install-recommends && rm -rf /var/lib/apt/lists/*
-
-# Install Chrome
-RUN curl -sSL https://dl.google.com/linux/linux_signing_key.pub | apt-key add - && \
-    echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list && \
-    apt-get update && apt-get install -y google-chrome-stable && \
+    libglib2.0-0 \
+    libxext6 \
+    libxfixes3 \
+    libxi6 \
+    libxtst6 \
+    --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# Set display environment variable for headless Chrome
+# Install Chrome manually
+RUN wget -O /tmp/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && apt-get install -y /tmp/chrome.deb && \
+    rm /tmp/chrome.deb && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set display env
 ENV DISPLAY=:99
 
-# Copy requirement file and install
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all files
+# Copy source code
 COPY . .
 
-# Run main.py
+# Run script
 CMD ["python", "main.py"]
