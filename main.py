@@ -1,49 +1,50 @@
 import time
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
 
-# Google Sheets setup
+# Setup Google Sheets API
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds = ServiceAccountCredentials.from_json_keyfile_name("service_account.json", scope)
 client = gspread.authorize(creds)
+
 sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1fDsqMmSzI5YCnqRFq4ma3i-SFvuCfHweWBUl3HHS2jM/edit").sheet1
 
-# Headless Chrome setup
+# Setup Selenium and Chromium options
 chrome_options = Options()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument("--disable-gpu")
-chrome_options.add_argument("--window-size=1920x1080")
+chrome_options.binary_location = "/usr/bin/chromium"
 
-driver = webdriver.Chrome(options=chrome_options)
+driver = webdriver.Chrome(executable_path="/usr/bin/chromedriver", options=chrome_options)
+
+# Open Wingo Game Page
 driver.get("https://damangames.bet/#/home/AllLotteryGames/WinGo?id=1")
-print("Opening website...")
+time.sleep(8)
 
+# Extract period and result
 try:
-    wait = WebDriverWait(driver, 20)
+    period = driver.find_element(By.CLASS_NAME, "gameRecordExpect").text.strip()
+    result = driver.find_element(By.CLASS_NAME, "gameRecordNumber").text.strip()
 
-    # Wait for period number
-    period_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "period")))
-    result_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "lottery-number")))
-    color_element = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "color")))
+    result_digits = result.split(" ")
+    total = sum(int(x) for x in result_digits)
 
-    period = period_element.text.strip()
-    result = result_element.text.strip()
-    color = color_element.text.strip()
-    big_small = "big" if int(result) >= 5 else "small"
+    size = "Big" if total >= 14 else "Small"
+    color = (
+        "Green" if total in [1,4,7,10,16,19,22,25]
+        else "Red" if total in [3,6,9,12,15,18,21,24]
+        else "Violet"
+    )
 
-    # Add row to Google Sheet
-    sheet.append_row([period, result, color, big_small])
-    print(f"Inserted: {period}, {result}, {color}, {big_small}")
+    # Save to Google Sheet
+    sheet.append_row([period, result, size, color])
+    print("Data Saved:", period, result, size, color)
 
 except Exception as e:
-    print("Error:", e)
+    print("Error occurred:", e)
 
-finally:
-    driver.quit()
+driver.quit()
