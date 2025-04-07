@@ -1,5 +1,0 @@
-# Ignore service account key and Python caches
-service_account.json
-__pycache__/
-*.pyc
-.env
